@@ -1,30 +1,39 @@
-import asyncio
-import websockets
-
 from src.server import WebSocket
 
 
 class Client:
 
-    def __init__(self, addr="localhost", port=8000):
-        self.sock = WebSocket(addr, port)
-        self.requests = []
-        self.conn_uri = 'ws://' + addr + ":" + str(port)
+    def __init__(self, SERVER_ADDR = 'localhost', SERVER_PORT = 80, HEADER = 64, MSG_FORMAT = "utf-8"):
+        ###
+        print(f"[CLIENT] Connecting to server on port {SERVER_PORT}, address {SERVER_ADDR}...")
 
-    async def sendRequest(self):
-        async with websockets.connect(self.conn_uri) as self.sock.x:
-            for i in range(1, 100, 1):
-                await self.sock.x.send("[Client][Sent]: Hewwo")
-    #                 # data_rcv = await self.sock.y.recv();
-    #                 # print("data received from server : " + data_rcv)
+        self.sock = WebSocket()
+        self.sock.x.connect((SERVER_ADDR, SERVER_PORT))
+        self.connected = True
+        
+        self.MSG_DISCONNECT = "!sayonara"
+        self.HEADER = HEADER
+        self.MSG_FORMAT = MSG_FORMAT
 
-    def executeSend(self):
-        try:
-            asyncio.get_event_loop().run_until_complete(self.sendRequest())
-            return True
-        except:
-            return False
+    def run(self):
+        ###
+        while self.connected:
+            client_input = input("[CLIENT] Type your input: ")
+            if client_input:
+                if client_input == self.MSG_DISCONNECT:
+                    self.connected = False
+                self.sendText(client_input)
+        print(f"[CLIENT] Closing connection... :(")
+
+    def sendText(self, txt):
+        ###
+        print(f"[CLIENT] Sending '{txt}'...")
+        txt = txt.encode(self.MSG_FORMAT)
+        send_length = str(len(txt)).encode(self.MSG_FORMAT)
+        send_length += b' ' * (self.HEADER - len(send_length))
+        self.sock.x.send(send_length)
+        self.sock.x.send(txt)
 
 
 if __name__ == "__main__":
-    print("Client")
+    print("Client module...")

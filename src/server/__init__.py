@@ -1,48 +1,64 @@
 from src.server.postprocessor import PostProcessor
 from src.server.preprocessor import PreProcessor
 from src.server.core import Core
-import asyncio, websockets
+import socket, threading
 
 
 class WebSocket:
 
-    def __init__(self, addr = None, port = None):
-        self.addr = addr
+    def __init__(self, port = None, addr = None):
+        ###
         self.port = port
-        self.x = ''
+        self.addr = addr
+        self.x = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    def bind(self, action):
-        self.x = websockets.serve(action, self.addr, self.port)
+    def prep(self):
+        ###
+        if self.addr == None:
+            self.addr = socket.gethostbyname(socket.gethostname()) #192.168.56.1
+        self.x.bind((self.addr, self.port))
 
+    def start(self):
+        ###
+        self.x.listen()
 
 class RequestHandler:
-    # Is instantiated by client request
-    def __init__(self, req):
-        self.thread_no = 'current_thread'
-        self.data = req
-        self.core_results = []
-        self.response ='default'
+    ### Is instantiated by client request
+    def __init__(self, conn, addr, HEADER = 64, MSG_FORMAT = "utf-8"):
+        self.conn = conn
+        self.addr = addr
+        self.connected = True
+        self.thread = threading.Thread(target=self.handle)
+        self.thread.start()
 
-    def getCoreResults(self):
-        self.core_results = ['htfefahfdha', 'dsfsadgadeh']
-        return self.core_results
+        self.HEADER = HEADER
+        self.MSG_FORMAT = MSG_FORMAT
+        self.MSG_DISCONNECT = "!sayonara"
 
     def handle(self):
         """
-        Actual execution logic
-        input -> preproc -> core (dl/ml) -> postproc -> response
+         Actual execution logic
+         input -> preproc -> core (dl/ml) -> postproc -> response
         """
-        self.response = "Final"
-
+        print(f"[CLIENT - {self.addr}] > CONNECTED")
+        while self.connected:
+            msg = self.conn.recv(self.HEADER).decode(self.MSG_FORMAT)
+            if msg:
+                length = int(msg)
+                msg = self.conn.recv(length).decode(self.MSG_FORMAT)
+                print(f"[CLIENT - {self.addr}]: {msg}")
+                if msg == self.MSG_DISCONNECT:
+                    self.connected = False
+        print(f"[CLIENT - {self.addr}] > DISCONNECTED")
+        self.conn.close()
 
 class Server:
-
-    def __init__(self, addr="localhost", port=8000, queue_max_size=10):
-
-        self.is_up = False
+    ###
+    def __init__(self, port = 80, addr = None):
+        ###
+        
         self.queue = []
-        self.sock = WebSocket(addr, port)
-        self.queue_max_size = queue_max_size
+        self.sock = WebSocket(port, addr)
 
         self.core = core.Core()
         self.preproc = PreProcessor()
@@ -50,56 +66,25 @@ class Server:
 
     def start(self):
         # Starting up the server
-        print("Starting server")
-        self.is_up = True
+        print("[SERVER] Starting...")
+        self.sock.prep()
+        self.run()
 
     def run(self):
-        # Server is running, applying requests
-        print("Running server")
-        try:
-            self.sock.bind(self.handleRequest)
-            asyncio.get_event_loop().run_until_complete(self.sock.x)
-            # asyncio.get_event_loop().run_forever()
-            return True
-        except:
-            return False
+        # Server is running, waiting for clients
+        self.sock.start()
+        print(f"[SERVER] Listening for clients on port {self.sock.port}, address {self.sock.addr}...")
+        while True:
+            conn, addr = self.sock.x.accept()
+            self.handleClient(conn, addr)
+            print(f"[SERVER] Active connections: {threading.activeCount() - 1}")
 
-    def shutdown(self):
-        # Server is shutting down
-        self.is_up = False
-
-    async def handleRequest(self):
-        # Handles requests
-        while self.is_up:
-            received_data = self.getRequest()
-            print("[Server][Received]: " + received_data)
-            if self.verifyRequest(received_data):
-                self.processRequest(received_data)
-
-    async def getRequest(self):
-        # Getting web client request
-        received_data = await websocket.recv()
-        return received_data
-
-    def verifyRequest(self, req):
-        # Verifies request's validity to proceed further
-        min_size = 5
-        max_size = 500
-        if (len(req) < min_size) or (len(req) > max_size):
-            return False
-        else:
-            return True
-
-    def processRequest(self, req):
-        # Instantiates request handler that processes/executes the request
-        try:
-            req_handler = RequestHandler(req)
-            self.queue.append(req_handler)
-            req_handler.handle()
-            return True
-        except:
-            return False
+    def handleClient(self, conn, addr):
+        # Instantiates request handler that processes/executes client requests
+        print("[SERVER] Handling new client...")
+        req_handler = RequestHandler(conn, addr)
+        self.queue.append(req_handler)
 
 
 if __name__ == "__main__":
-    print("Server")
+    print("bEst SeRVeR eVeR")
