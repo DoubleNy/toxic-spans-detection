@@ -15,8 +15,11 @@ class WebSocket:
     def prep(self):
         ###
         if self.addr == None:
-            self.addr = socket.gethostbyname(socket.gethostname()) #192.168.56.1
-        self.x.bind((self.addr, self.port))
+            try:
+                self.addr = socket.gethostbyname(socket.gethostname()) #192.168.56.1
+                self.x.bind((self.addr, self.port))
+            except:
+                self.addr = 'localhost'
 
     def start(self):
         ###
