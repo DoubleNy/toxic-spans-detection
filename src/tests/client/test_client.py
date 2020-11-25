@@ -1,6 +1,4 @@
-import pytest
-import asyncio
-import websockets
+import pytest, threading
 
 from src.server.client import Client
 from src.server import Server
@@ -11,6 +9,11 @@ class TestClient():
 
     cl = Client()
 
-    def test_client_executeSend(self):
+    def test_client_run(self):
         # No connection yet
-        assert TestClient.cl.executeSend() == False
+        self.cl.connected = False
+        self.cl.run()
+
+    def test_client_sendTest(self):
+        self.cl.connected = False
+        self.cl.sendText("Bla bla")

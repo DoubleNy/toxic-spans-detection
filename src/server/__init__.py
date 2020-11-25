@@ -59,6 +59,7 @@ class Server:
         
         self.queue = []
         self.sock = WebSocket(port, addr)
+        self.running_mode = "default"
 
         self.core = core.Core()
         self.preproc = PreProcessor()
@@ -74,10 +75,11 @@ class Server:
         # Server is running, waiting for clients
         self.sock.start()
         print(f"[SERVER] Listening for clients on port {self.sock.port}, address {self.sock.addr}...")
-        while True:
-            conn, addr = self.sock.x.accept()
-            self.handleClient(conn, addr)
-            print(f"[SERVER] Active connections: {threading.activeCount() - 1}")
+        if self.running_mode != "test":
+            while True:
+                conn, addr = self.sock.x.accept()
+                self.handleClient(conn, addr)
+                print(f"[SERVER] Active connections: {threading.activeCount() - 1}")
 
     def handleClient(self, conn, addr):
         # Instantiates request handler that processes/executes client requests
@@ -87,4 +89,4 @@ class Server:
 
 
 if __name__ == "__main__":
-    print("bEst SeRVeR eVeR")
+    print("bEst SeRVeR e")
